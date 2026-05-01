@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masāžas Kursu Interaktīvais Ceļvedis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Warm Neutrals with Subtle Indigo/Rose Accents -->
+    <!-- Application Structure Plan: A clean, dashboard-like SPA designed for prospective students. Sections: 1. Dashboard Overview (Key stats & quick comparison), 2. Detailed Course Explorer (Interactive cards with filter logic), 3. ROI & Time Analysis (Visual comparisons), 4. Decision Assistant (Interactive quiz leading to a recommendation). This structure moves from a high-level overview to detailed exploration, ending with actionable guidance. -->
+    <!-- Visualization & Content Choices: 
+         - Overview Stats -> Goal: Inform -> Simple bold numbers -> HTML/CSS.
+         - Cost vs Time -> Goal: Compare -> Scatter Plot -> Shows relation between investment types -> Chart.js.
+         - Course Comparison -> Goal: Organize/Detail -> Interactive Cards -> Allows focused reading -> Vanilla JS for filtering.
+         - Focus Areas -> Goal: Compare -> Radar Chart -> Shows strengths of top courses -> Chart.js.
+         - Decision Quiz -> Goal: Organize/Guide -> Step-by-step logic -> Simplifies complex choices -> Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        :root {
+            --bg-main: #FAFAF9; /* Warm neutral 50 */
+            --text-main: #292524; /* Warm neutral 800 */
+            --text-muted: #57534E; /* Warm neutral 600 */
+            --accent-primary: #6366f1; /* Indigo 500 */
+            --accent-secondary: #f43f5e; /* Rose 500 */
+            --card-bg: #FFFFFF;
+        }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-main); 
+            color: var(--text-main);
+        }
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 100%; 
+            margin: 0 auto; 
+            height: 350px; 
+            max-height: 400px; 
+        }
+        @media (max-width: 768px) { 
+            .chart-container { height: 250px; max-height: 300px; } 
+        }
+        .nav-active {
+            border-bottom: 2px solid var(--accent-primary);
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+        .hidden-section { display: none; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-white sticky top-0 z-50 shadow-sm border-b border-stone-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-2">💆‍♂️</span>
+                    <span class="font-bold text-xl tracking-tight text-stone-800">MasāžasIzglītība</span>
+                </div>
+                <div class="hidden sm:flex space-x-8 items-center">
+                    <button onclick="nav('dashboard')" id="nav-dashboard" class="nav-btn nav-active text-stone-600 hover:text-indigo-600 px-1 py-5 text-sm font-medium transition-colors">Pārskats</button>
+                    <button onclick="nav('explorer')" id="nav-explorer" class="nav-btn text-stone-600 hover:text-indigo-600 px-1 py-5 text-sm font-medium transition-colors">Kursu Izpēte</button>
+                    <button onclick="nav('analysis')" id="nav-analysis" class="nav-btn text-stone-600 hover:text-indigo-600 px-1 py-5 text-sm font-medium transition-colors">Datu Analīze</button>
+                    <button onclick="nav('decision')" id="nav-decision" class="nav-btn bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">Kuru izvēlēties?</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        <!-- 1. Dashboard View -->
+        <section id="sec-dashboard" class="content-section fade-in">
+            <header class="mb-10 text-center sm:text-left">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 mb-4">Atrodi savu ceļu masāžas nozarē</h1>
+                <p class="text-lg text-stone-600 max-w-3xl">Pārskatāms, uz faktiem balstīts ceļvedis par labākajiem masāžas kursiem Latvijā. Izproti atšķirības starp medicīnisko izglītību, SPA speciālista statusu un bāzes kursiem, lai pieņemtu savam budžetam atbilstošāko lēmumu.</p>
+            </header>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col items-center sm:items-start">
+                    <span class="text-stone-400 text-sm font-medium uppercase tracking-wider mb-1">Cenu Amplitūda</span>
+                    <span class="text-3xl font-bold text-stone-800">169€ - 3500€</span>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col items-center sm:items-start">
+                    <span class="text-stone-400 text-sm font-medium uppercase tracking-wider mb-1">Mācību Ilgums</span>
+                    <span class="text-3xl font-bold text-stone-800">4 d. - 2 gadi</span>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col items-center sm:items-start">
+                    <span class="text-stone-400 text-sm font-medium uppercase tracking-wider mb-1">Eksperta Izvēle</span>
+                    <span class="text-xl font-bold text-indigo-600 mt-2">RiS (SPA + ITEC)</span>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col items-center sm:items-start justify-center cursor-pointer hover:bg-stone-50 transition" onclick="nav('decision')">
+                    <span class="text-indigo-600 font-medium flex items-center">
+                        Sākt testu lēmumam <span class="text-2xl ml-2">&#8594;</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Introductory Context -->
+            <div class="bg-stone-50 p-8 rounded-2xl border border-stone-200">
+                <h2 class="text-2xl font-bold mb-4 text-stone-800">Kāpēc izvēle ir tik svarīga?</h2>
+                <div class="grid md:grid-cols-2 gap-8 text-stone-600">
+                    <div>
+                        <p class="mb-4">Masāžas tirgus Latvijā ir stingri regulēts, bet vienlaikus piedāvā dažādus ceļus. Jūsu izvēlētais kurss noteiks ne tikai jūsu ienākumus, bet arī <strong>juridisko statusu</strong> un vietas, kur drīkstēsiet strādāt.</p>
+                        <ul class="space-y-2">
+                            <li><span class="text-rose-500 font-bold mr-2">&#9632;</span><strong>Medicīna:</strong> Darbam slimnīcās vajadzīgs koledžas diploms.</li>
+                            <li><span class="text-amber-500 font-bold mr-2">&#9632;</span><strong>SPA & Ārzemes:</strong> Nepieciešama ITEC akreditācija vai 4. līmenis.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="mb-4">Daudzi pieļauj kļūdu, izvēloties lētāko kursu (zem 200€) ar cerību strādāt luksusa salonos. Šie budžeta kursi ir izcili <em>profesijas nogaršošanai</em>, taču nav pietiekami nopietnas karjeras izbūvei. Izmantojiet šo rīku, lai salīdzinātu datus un ROI (atdevi no investīcijām).</p>
+                        <button onclick="nav('explorer')" class="text-indigo-600 font-semibold hover:underline mt-2">Pētīt kursu detaļas &#8594;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Course Explorer View -->
+        <section id="sec-explorer" class="content-section hidden-section fade-in">
+            <header class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900 mb-2">Detalizēta Kursu Izpēte</h2>
+                <p class="text-stone-600">Pārlūkojiet labākos piedāvājumus tirgū, sagrupētus pēc budžeta un mērķa kategorijām. Noklikšķiniet uz kategorijas, lai filtrētu rezultātus.</p>
+            </header>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap gap-3 mb-8" id="filter-buttons">
+                <button class="filter-btn bg-stone-800 text-white px-4 py-2 rounded-full text-sm font-medium transition" onclick="filterCourses('all')">Visi Kursi</button>
+                <button class="filter-btn bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 px-4 py-2 rounded-full text-sm font-medium transition" onclick="filterCourses('high')">Augsts Budžets (Medicīna/SPA)</button>
+                <button class="filter-btn bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 px-4 py-2 rounded-full text-sm font-medium transition" onclick="filterCourses('medium')">Zelta Vidusceļš (Elastība)</button>
+                <button class="filter-btn bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 px-4 py-2 rounded-full text-sm font-medium transition" onclick="filterCourses('low')">Zems Budžets (Iepazīšanās)</button>
+            </div>
+
+            <!-- Course Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="courses-grid">
+                <!-- Cards generated by JS -->
+            </div>
+        </section>
+
+        <!-- 3. Data Analysis View -->
+        <section id="sec-analysis" class="content-section hidden-section fade-in">
+            <header class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900 mb-2">Datu Analīze un ROI</h2>
+                <p class="text-stone-600">Skatoties tikai uz cenu, bieži tiek palaista garām kopējā bilde. Šie grafiki palīdz vizualizēt attiecību starp ieguldīto laiku, naudu un iegūto prasmju daudzveidību.</p>
+            </header>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- Scatter Plot -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
+                    <h3 class="text-xl font-bold text-stone-800 mb-2">Investīciju Matrica (Laiks vs Nauda)</h3>
+                    <p class="text-sm text-stone-500 mb-6">Salīdzina mācību ilgumu (mēnešos) pret kopējām izmaksām (€). <em>Ideāla izvēle bieži atrodas viduszonā - sabalansējot ātrumu un cenu.</em></p>
+                    <div class="chart-container">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Radar Chart -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
+                    <h3 class="text-xl font-bold text-stone-800 mb-2">Prasmju Profili (Top 2 Izvēles)</h3>
+                    <p class="text-sm text-stone-500 mb-6">Salīdzina Eksperta Izvēli (RiS) un Medicīnisko pieeju (LU PSK) dažādās kompetenču jomās.</p>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Decision Assistant View -->
+        <section id="sec-decision" class="content-section hidden-section fade-in max-w-3xl mx-auto">
+            <header class="mb-10 text-center">
+                <h2 class="text-3xl font-bold text-stone-900 mb-2">Interaktīvais Lēmuma Asistents</h2>
+                <p class="text-stone-600">Atbildiet uz 2-3 vienkāršiem jautājumiem, un mēs ieteiksim jūsu situācijai piemērotāko mācību iestādi, balstoties uz ekspertu analīzi.</p>
+            </header>
+
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-stone-200 min-h-[400px] flex flex-col justify-center">
+                
+                <!-- Quiz Container -->
+                <div id="quiz-container" class="text-center">
+                    <!-- Dynamic content loaded via JS -->
+                </div>
+
+                <!-- Result Container -->
+                <div id="result-container" class="hidden-section text-center">
+                    <div class="inline-block p-4 rounded-full bg-indigo-50 text-4xl mb-4" id="result-icon">🎓</div>
+                    <h3 class="text-2xl font-bold text-stone-800 mb-2" id="result-title">Rezultāta Virsraksts</h3>
+                    <p class="text-stone-600 mb-6" id="result-desc">Rezultāta apraksts parādīsies šeit.</p>
+                    
+                    <div class="bg-stone-50 p-6 rounded-xl text-left border border-stone-200 mb-8">
+                        <h4 class="font-bold text-stone-800 mb-2">Kāpēc šī izvēle?</h4>
+                        <p class="text-sm text-stone-600" id="result-reason">Skaidrojums šeit.</p>
+                    </div>
+
+                    <button onclick="startQuiz()" class="text-indigo-600 font-medium hover:underline">Sākt testu no jauna</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-stone-50 py-8 border-t border-stone-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-stone-500 text-sm">
+            <p>&copy; 2026 MasāžasIzglītība.lv Dati balstīti uz publiski pieejamu informāciju.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA ---
+        const coursesData = [
+            {
+                id: 'stradina',
+                category: 'high',
+                title: 'LU P. Stradiņa medicīnas koledža',
+                subtitle: 'Ārstnieciskā masāža',
+                price: '3400 €',
+                duration: '2 gadi',
+                status: 'Ārstniecības persona',
+                pros: 'Neapstrīdams valsts medicīniskais diploms. Dod iespēju strādāt ārstniecības iestādēs. Dziļas klīniskās zināšanas.',
+                cons: 'Ilgs studiju laiks. Nav fokusa uz modernām SPA estētikas inovācijām.',
+                icon: '🏥',
+                colorClass: 'text-rose-600',
+                bgClass: 'bg-rose-50',
+                borderClass: 'border-rose-200'
+            },
+            {
+                id: 'beauty',
+                category: 'high',
+                title: 'Beauty School',
+                subtitle: 'SPA speciālists (ar ITEC)',
+                price: '2800 - 3500 €',
+                duration: '10 - 18 mēneši',
+                status: '4. līmenis + ITEC',
+                pros: 'Akadēmiski stabila izglītība ar ļoti spēcīgu estētisko un kosmetoloģijas bāzi. Ietver uzturmācību.',
+                cons: 'Dārgāks nekā citi SPA kursi un prasa ilgāku laika ieguldījumu.',
+                icon: '💅',
+                colorClass: 'text-amber-600',
+                bgClass: 'bg-amber-50',
+                borderClass: 'border-amber-200'
+            },
+            {
+                id: 'ris-pro',
+                category: 'medium',
+                title: 'RiS (Rīgas Starptautiskais mācību centrs)',
+                subtitle: 'SPA speciālists + ITEC',
+                price: '1642 € (ar ITEC eks.)',
+                duration: '4 - 8 mēneši',
+                status: '4. līmenis + ITEC',
+                pros: 'Izcila cenas, ātruma un zināšanu apjoma attiecība. Iemāca milzīgu skaitu eksotisko un terapeitisko tehniku.',
+                cons: 'Ļoti augsta intensitāte, kas prasa lielu atdevi īsā laikā.',
+                icon: '⚖️',
+                colorClass: 'text-indigo-600',
+                bgClass: 'bg-indigo-50',
+                borderClass: 'border-indigo-200',
+                badge: 'Eksperta Izvēle'
+            },
+            {
+                id: 'ris-online',
+                category: 'low',
+                title: 'RiS ONLINE',
+                subtitle: 'Holistiskās masāžas kurss',
+                price: '490 €',
+                duration: 'Pašmācība + 10h Zoom',
+                status: 'Starptautisks sertifikāts',
+                pros: 'Lēts hibrīdmodelis. Var mācīties no mājām. Ideāli, ja neesat no Rīgas.',
+                cons: 'Apgūst tikai bāzes tehnikas, bez valsts profesijas līmeņa.',
+                icon: '💻',
+                colorClass: 'text-emerald-600',
+                bgClass: 'bg-emerald-50',
+                borderClass: 'border-emerald-200'
+            },
+            {
+                id: 'ris-base',
+                category: 'low',
+                title: 'RiS Grupu Apmācība',
+                subtitle: 'Klasiskās masāžas iepazīšanās',
+                price: '169 €',
+                duration: '4 dienas (40h)',
+                status: 'Neformālās izgl. sertifikāts',
+                pros: 'Absolūti ideāla izvēle "testa braucienam". Zems finansiālais un laika risks.',
+                cons: 'Sertifikāts nav pietiekams darbam augstākās klases SPA. Nav profesijas kvalifikācijas.',
+                icon: '🌱',
+                colorClass: 'text-stone-600',
+                bgClass: 'bg-stone-100',
+                borderClass: 'border-stone-300'
+            }
+        ];
+
+        // --- NAVIGATION LOGIC ---
+        function nav(sectionId) {
+            // Update buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('nav-active');
+                if(!btn.classList.contains('bg-indigo-600')) {
+                    btn.classList.remove('text-indigo-600');
+                }
+            });
+            const activeBtn = document.getElementById(`nav-${sectionId}`);
+            if(activeBtn && !activeBtn.classList.contains('bg-indigo-600')) {
+                activeBtn.classList.add('nav-active');
+            }
+
+            // Update sections
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden-section'));
+            document.getElementById(`sec-${sectionId}`).classList.remove('hidden-section');
+
+            // Initialize charts if navigating to analysis
+            if(sectionId === 'analysis' && !window.chartsInitialized) {
+                initCharts();
+                window.chartsInitialized = true;
+            }
+            
+            // Start quiz if navigating to decision
+            if(sectionId === 'decision') {
+                startQuiz();
+            }
+
+            window.scrollTo(0,0);
+        }
+
+        // --- EXPLORER LOGIC ---
+        function renderCourses(filter = 'all') {
+            const grid = document.getElementById('courses-grid');
+            grid.innerHTML = '';
+            
+            const filteredData = filter === 'all' ? coursesData : coursesData.filter(c => c.category === filter);
+
+            filteredData.forEach(course => {
+                const badgeHTML = course.badge ? `<div class="absolute -top-3 -right-3 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">${course.badge}</div>` : '';
+                
+                const card = `
+                    <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 relative flex flex-col h-full hover:shadow-md transition">
+                        ${badgeHTML}
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="${course.bgClass} p-3 rounded-full text-2xl border ${course.borderClass}">${course.icon}</div>
+                            <div>
+                                <h3 class="font-bold text-stone-800 leading-tight">${course.title}</h3>
+                                <p class="text-sm ${course.colorClass} font-medium">${course.subtitle}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 bg-stone-50 p-4 rounded-xl mb-4 text-sm border border-stone-100">
+                            <div><span class="block text-stone-500 text-xs uppercase tracking-wider mb-1">Izmaksas</span><span class="font-bold text-stone-800">${course.price}</span></div>
+                            <div><span class="block text-stone-500 text-xs uppercase tracking-wider mb-1">Ilgums</span><span class="font-bold text-stone-800">${course.duration}</span></div>
+                            <div class="col-span-2 pt-2 border-t border-stone-200"><span class="block text-stone-500 text-xs uppercase tracking-wider mb-1">Iegūtais Statuss</span><span class="font-medium text-stone-700">${course.status}</span></div>
+                        </div>
+                        
+                        <div class="text-sm flex-grow">
+                            <p class="mb-3"><strong class="text-stone-800">Plusi:</strong> <span class="text-stone-600">${course.pros}</span></p>
+                            <p><strong class="text-stone-800">Mīnusi:</strong> <span class="text-stone-600">${course.cons}</span></p>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += card;
+            });
+        }
+
+        function filterCourses(category) {
+            // Update button styles
+            const buttons = document.querySelectorAll('#filter-buttons .filter-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-stone-800', 'text-white');
+                btn.classList.add('bg-white', 'text-stone-600');
+            });
+            event.target.classList.remove('bg-white', 'text-stone-600');
+            event.target.classList.add('bg-stone-800', 'text-white');
+            
+            renderCourses(category);
+        }
+
+        // --- CHART LOGIC ---
+        const processLabels = (label) => {
+            if (typeof label !== 'string') return label;
+            if (label.length <= 16) return label;
+            const words = label.split(' ');
+            const lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                if ((currentLine + word).length > 16) {
+                    if (currentLine.length > 0) lines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            }
+            if (currentLine.trim().length > 0) lines.push(currentLine.trim());
+            return lines;
+        };
+
+        const commonTooltipConfig = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) return label.join(' ');
+                    return label;
+                }
+            }
+        };
+
+        function initCharts() {
+            // Scatter Chart (Time vs Cost)
+            const scatterCtx = document.getElementById('scatterChart').getContext('2d');
+            new Chart(scatterCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        { label: 'LU PSK (Medicīna)', data: [{x: 24, y: 3400}], backgroundColor: '#f43f5e', pointRadius: 10, pointHoverRadius: 12 },
+                        { label: 'Beauty School (SPA)', data: [{x: 14, y: 3150}], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10 },
+                        { label: 'RiS (SPA+ITEC)', data: [{x: 6, y: 1642}], backgroundColor: '#6366f1', pointRadius: 14, pointHoverRadius: 16 },
+                        { label: 'RiS Online', data: [{x: 2, y: 490}], backgroundColor: '#10b981', pointRadius: 6, pointHoverRadius: 8 },
+                        { label: 'RiS Bāze', data: [{x: 0.2, y: 169}], backgroundColor: '#78716c', pointRadius: 6, pointHoverRadius: 8 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) { return `${context.dataset.label}: ${context.raw.x} mēn, ${context.raw.y} €`; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Mācību ilgums (Mēneši)' }, min: 0, max: 26, grid: {color: '#f5f5f4'} },
+                        y: { title: { display: true, text: 'Izmaksas (EUR)' }, min: 0, max: 4000, grid: {color: '#f5f5f4'} }
+                    }
+                }
+            });
+
+            // Radar Chart (Focus Areas)
+            const radarCtx = document.getElementById('radarChart').getContext('2d');
+            const rawLabels = ['Medicīniskās zināšanas', 'Estētika un Sejas SPA', 'Tehniku Daudzveidība', 'Mācību Ātrums (ROI)', 'Globālās Iespējas'];
+            
+            new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: rawLabels.map(processLabels),
+                    datasets: [
+                        {
+                            label: 'LU Stradiņa koledža',
+                            data: [100, 20, 40, 20, 50],
+                            backgroundColor: 'rgba(244, 63, 94, 0.2)', borderColor: '#f43f5e', pointBackgroundColor: '#f43f5e', borderWidth: 2
+                        },
+                        {
+                            label: 'RiS SPA+ITEC',
+                            data: [30, 70, 100, 90, 100],
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)', borderColor: '#6366f1', pointBackgroundColor: '#6366f1', borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+                    plugins: { tooltip: commonTooltipConfig }
+                }
+            });
+        }
+
+        // --- DECISION QUIZ LOGIC ---
+        const quizLogic = {
+            start: {
+                question: "Vai esat 100% pārliecināts, ka vēlaties kļūt par masieri un šis darbs nebūs fiziski par smagu?",
+                options: [
+                    { text: "Neesmu drošs, gribu pamēģināt", next: "result_base" },
+                    { text: "Jā, esmu gatavs nopietnai karjerai", next: "q_field" }
+                ]
+            },
+            q_field: {
+                question: "Kurā vidē jūs primāri vēlētos strādāt nākotnē?",
+                options: [
+                    { text: "Slimnīcās, poliklīnikās, ārstējot traumas", next: "result_med" },
+                    { text: "Luksusa SPA, salonos vai ārzemēs (kruīzos)", next: "result_spa" },
+                    { text: "Vēl nezinu, gribu maksimālas iespējas", next: "result_ris" }
+                ]
+            }
+        };
+
+        const resultsData = {
+            result_base: {
+                title: "Ideāls sākums: RiS Klasiskās masāžas iepazīšanās kurss",
+                icon: "🌱",
+                desc: "Jums nav jāriskē ar tūkstošiem eiro. Pamēģiniet profesiju 4 dienu laikā par adekvātu summu.",
+                reason: "Šis 169€ kurss ļaus apgūt pamatus. Ja sapratīsiet, ka tas nav jums – nebūsiet pazaudējis lielu naudu. Ja iepatiksies, varēsiet turpināt izglītību."
+            },
+            result_med: {
+                title: "Medicīnas ceļš: LU P. Stradiņa koledža",
+                icon: "🏥",
+                desc: "Jūsu mērķis prasa oficiālu ārstniecības personas statusu.",
+                reason: "Darbam oficiālajā veselības aprūpē ir nepieciešams valsts koledžas diploms (2 gadu studijas). Tas dod garantiju statusam, bet prasa nopietnu laika un finanšu ieguldījumu."
+            },
+            result_spa: {
+                title: "Eksperta Izvēle: RiS SPA speciālists + ITEC",
+                icon: "✨",
+                desc: "Zelta vidusceļš starptautiskai SPA karjerai.",
+                reason: "Šī programma par 1642€ dod ne tikai valsts akreditāciju, bet arī ITEC diplomu, kas ir 'zelta standarts' ārzemēs un kruīzu kuģos. Apgūsiet plašu tehniku klāstu īsā laikā."
+            },
+            result_ris: {
+                title: "Maksimāla elastība: RiS SPA speciālists + ITEC",
+                icon: "⚖️",
+                desc: "Universālākais risinājums, ja niša vēl nav skaidra.",
+                reason: "Šis ir 'Šveices nazis' masāžā. Jūs iegūstat daudz tehniku un dokumentus, kas ļauj strādāt gan savā privātpraksē Latvijā, gan luksusa salonos visā pasaulē, neinvestējot 2 gadus akadēmiskā medicīnā."
+            }
+        };
+
+        function startQuiz() {
+            document.getElementById('result-container').classList.add('hidden-section');
+            document.getElementById('quiz-container').classList.remove('hidden-section');
+            renderQuestion('start');
+        }
+
+        function renderQuestion(qId) {
+            const container = document.getElementById('quiz-container');
+            const q = quizLogic[qId];
+            
+            let html = `<h3 class="text-2xl font-bold text-stone-800 mb-8 max-w-xl mx-auto">${q.question}</h3><div class="space-y-4 max-w-md mx-auto">`;
+            
+            q.options.forEach(opt => {
+                html += `<button onclick="handleAnswer('${opt.next}')" class="w-full bg-white border-2 border-indigo-100 hover:border-indigo-600 text-stone-700 hover:text-indigo-700 font-medium py-4 px-6 rounded-xl transition-all shadow-sm hover:shadow-md text-left">${opt.text}</button>`;
+            });
+            
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function handleAnswer(nextStep) {
+            if (nextStep.startsWith('result_')) {
+                showResult(nextStep);
+            } else {
+                renderQuestion(nextStep);
+            }
+        }
+
+        function showResult(resId) {
+            document.getElementById('quiz-container').classList.add('hidden-section');
+            const resContainer = document.getElementById('result-container');
+            resContainer.classList.remove('hidden-section');
+            
+            const res = resultsData[resId];
+            document.getElementById('result-icon').innerText = res.icon;
+            document.getElementById('result-title').innerText = res.title;
+            document.getElementById('result-desc').innerText = res.desc;
+            document.getElementById('result-reason').innerText = res.reason;
+        }
+
+        // Initialize App
+        window.onload = () => {
+            renderCourses();
+            // Start on dashboard
+        };
+
+    </script>
+</body>
+</html>
